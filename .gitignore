@@ -1,0 +1,15 @@
+# secrets / local state
+.env
+.splunk_token
+
+# python
+.venv/
+__pycache__/
+*.pyc
+
+# dev artifacts
+vigil/ui/_shots/
+*.ndjson
+submission_media/
+工具与技术.md
+vigil/ui/.console_config.json

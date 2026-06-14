@@ -1,0 +1,46 @@
+# One-command stack for Vigil: Splunk Enterprise + the Vigil console.
+#
+#   1. copy .env.example -> .env and set LLM_API_KEY (Volcengine Ark / OpenAI-compatible)
+#   2. docker compose up --build
+#   3. open http://localhost:8800   (Splunk UI: http://localhost:8000  admin / Admin@123)
+#
+# The vigil container waits for Splunk, runs scripts/bootstrap.py (indexes, HEC,
+# token, demo data, native dashboard), then serves the console.
+services:
+  splunk:
+    image: splunk/splunk:latest
+    container_name: vigil-splunk
+    environment:
+      SPLUNK_START_ARGS: --accept-license
+      SPLUNK_PASSWORD: Admin@123
+      SPLUNK_HEC_TOKEN: d854b2b9-68c7-4c61-a298-e6e1c12acc7c
+    ports:
+      - "8000:8000"   # Splunk Web
+      - "8089:8089"   # REST / management
+      - "8088:8088"   # HEC (published so seeding can use the network)
+    healthcheck:
+      test: ["CMD", "curl", "-fkse", "https://localhost:8089/services/server/info", "-u", "admin:Admin@123"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+
+  vigil:
+    build: .
+    container_name: vigil-console
+    depends_on:
+      splunk:
+        condition: service_healthy
+    environment:
+      SPLUNK_HOST: splunk
+      SPLUNK_PORT: "8089"
+      SPLUNK_USERNAME: admin
+      SPLUNK_PASSWORD: Admin@123
+      SPLUNK_HEC_URL: https://splunk:8088
+      HEC_TOKEN: d854b2b9-68c7-4c61-a298-e6e1c12acc7c
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://ark.cn-beijing.volces.com/api/coding/v3}
+      LLM_MODEL: ${LLM_MODEL:-ark-code-latest}
+      LLM_API_KEY: ${LLM_API_KEY:?set LLM_API_KEY in your .env}
+      MCP_HOST: 127.0.0.1
+    ports:
+      - "8800:8800"
